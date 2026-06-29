@@ -1,0 +1,17 @@
+# Godot
+.godot/
+*.import
+export_credentials.cfg
+
+# Build output
+build/
+*.apk
+*.aab
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

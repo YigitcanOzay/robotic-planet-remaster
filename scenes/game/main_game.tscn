@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/GameManager.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/systems/MapSystem.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/systems/BuildingManager.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/systems/UnitManager.gd" id="4"]
+
+[node name="MainGame" type="Node"]
+script = ExtResource("1")
+map_width = 56
+map_height = 56
+map_seed = 0
+
+[node name="MapSystem" type="Node2D" parent="."]
+script = ExtResource("2")
+
+[node name="BuildingManager" type="Node" parent="."]
+script = ExtResource("3")
+
+[node name="UnitManager" type="Node" parent="."]
+script = ExtResource("4")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(1.5, 1.5)
+position_smoothing_enabled = true
+position_smoothing_speed = 5.0

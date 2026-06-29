@@ -1,0 +1,156 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:  # Manuel tetikleme butonu
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+      # 1. Kodu çek
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Java kur (Android için gerekli)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # 3. Godot 4.2.2 indir
+      - name: Download Godot
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.2.2-stable/Godot_v4.2.2-stable_linux.x86_64.zip
+          unzip -q Godot_v4.2.2-stable_linux.x86_64.zip
+          mv Godot_v4.2.2-stable_linux.x86_64 godot
+          chmod +x godot
+
+      # 4. Godot Android export template indir
+      - name: Download Android Export Templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates/4.2.2.stable
+          wget -q https://github.com/godotengine/godot/releases/download/4.2.2-stable/Godot_v4.2.2-stable_export_templates.tpz
+          unzip -q Godot_v4.2.2-stable_export_templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/4.2.2.stable/
+
+      # 5. Android SDK kur
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 6. Debug keystore oluştur (imzalama için)
+      - name: Create Debug Keystore
+        run: |
+          keytool -genkey -v \
+            -keystore debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      # 7. Godot editor ayarlarını yapılandır
+      - name: Configure Godot Android Settings
+        run: |
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-4.tres << 'EOF'
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "/usr/local/lib/android/sdk"
+          export/android/debug_keystore = "${{ github.workspace }}/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+
+      # 8. Export preset oluştur
+      - name: Create Export Presets
+        run: |
+          cat > export_presets.cfg << 'EOF'
+          [preset.0]
+
+          name="Android"
+          platform="Android"
+          runnable=true
+          dedicated_server=false
+          custom_features=""
+          export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
+          export_path="build/RoboticPlanet.apk"
+          encryption_include_filters=""
+          encryption_exclude_filters=""
+          encrypt_pck=false
+          encrypt_directory=false
+
+          [preset.0.options]
+
+          custom_template/debug=""
+          custom_template/release=""
+          gradle_build/use_gradle_build=false
+          gradle_build/gradle_build_directory=""
+          gradle_build/android_source_template=""
+          architectures/armeabi-v7a=true
+          architectures/arm64-v8a=true
+          architectures/x86=false
+          architectures/x86_64=false
+          keystore/debug="${{ github.workspace }}/debug.keystore"
+          keystore/debug_user="androiddebugkey"
+          keystore/debug_password="android"
+          keystore/release=""
+          keystore/release_user=""
+          keystore/release_password=""
+          one_click_deploy/clear_previous_install=false
+          version/code=1
+          version/name="0.1.2"
+          package/unique_name="com.roboticplanet.remaster"
+          package/name="Robotic Planet Remaster"
+          package/signed=true
+          package/classify_as_game=true
+          launcher_icons/main_192x192=""
+          launcher_icons/adaptive_foreground_432x432=""
+          launcher_icons/adaptive_background_432x432=""
+          graphics/opengl_debug=false
+          xr_features/xr_mode=0
+          xr_features/hand_tracking=0
+          screen/immersive_mode=true
+          screen/support_small=true
+          screen/support_normal=true
+          screen/support_large=true
+          screen/support_xlarge=true
+          EOF
+
+      # 9. Build klasörü oluştur
+      - name: Create Build Directory
+        run: mkdir -p build
+
+      # 10. APK build et
+      - name: Build APK
+        run: |
+          ./godot --headless --export-debug "Android" build/RoboticPlanet.apk
+
+      # 11. APK'yı artifact olarak kaydet (indirilebilir)
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RoboticPlanet-APK
+          path: build/RoboticPlanet.apk
+          retention-days: 30
+
+      # 12. Build başarılıysa özet göster
+      - name: Build Summary
+        run: |
+          if [ -f "build/RoboticPlanet.apk" ]; then
+            SIZE=$(du -sh build/RoboticPlanet.apk | cut -f1)
+            echo "✅ APK başarıyla oluşturuldu!"
+            echo "📦 Boyut: $SIZE"
+            echo "📍 Konum: build/RoboticPlanet.apk"
+          else
+            echo "❌ APK oluşturulamadı!"
+            exit 1
+          fi
