@@ -56,6 +56,10 @@ func _init_map() -> void:
 	building_manager.place_building("hq", Vector2i(5, 5), 0)
 	building_manager.place_building("hq", Vector2i(map_width-6, map_height-6), 1)
 
+	var cam = get_node_or_null("Camera2D")
+	if cam and cam.has_method("set_map_bounds"):
+		cam.set_map_bounds(map_width * MapSystem.TILE_SIZE, map_height * MapSystem.TILE_SIZE)
+
 func _spawn_starters() -> void:
 	if unit_manager == null or map_system == null: return
 	var base = map_system.grid_to_world(Vector2i(6, 5))
