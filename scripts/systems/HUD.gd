@@ -112,13 +112,13 @@ func _start_placing(key: String) -> void:
 	var data = GameData.get_building(key)
 	status_label.text = "Yerleştir: %s — haritaya dokun (iptal: tekrar bas)" % data.get("name", key)
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if placing_key == "":
 		return
 	# Ekrana dokunma → grid pozisyonuna bina koy
 	if event is InputEventScreenTouch and event.pressed:
 		_try_place_at_screen(event.position)
-		get_viewport().set_input_as_handled()  # kamera kaymasın
+		get_viewport().set_input_as_handled()  # kamera bu dokunuşu görmesin
 
 func _try_place_at_screen(screen_pos: Vector2) -> void:
 	if camera == null or map_system == null:

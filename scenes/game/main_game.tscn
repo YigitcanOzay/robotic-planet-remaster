@@ -22,10 +22,10 @@ script = ExtResource("3")
 [node name="UnitManager" type="Node" parent="."]
 script = ExtResource("4")
 
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("6")
+
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(288, 224)
 zoom = Vector2(1.0, 1.0)
 script = ExtResource("5")
-
-[node name="HUD" type="CanvasLayer" parent="."]
-script = ExtResource("6")

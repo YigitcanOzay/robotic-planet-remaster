@@ -21,7 +21,7 @@ func set_map_bounds(w: float, h: float) -> void:
 	map_max = Vector2(w, h)
 
 # =============================================================================
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_touches[event.index] = event.position
