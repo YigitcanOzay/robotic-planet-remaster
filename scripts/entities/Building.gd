@@ -53,10 +53,55 @@ func _ready() -> void:
 	input_bins  = _empty_bins(max_input_slots)
 	output_bins = _empty_bins(max_output_slots)
 
+	z_index = 5  # zeminin üstünde
+	queue_redraw()
+
 func _empty_bins(size: int) -> Array:
 	var a: Array = []
 	for i in range(size): a.append(null)
 	return a
+
+# =============================================================================
+# ÇİZİM (kod-sprite: kare + kod harfi + durum)
+# =============================================================================
+
+func _draw() -> void:
+	var half := 14.0
+	var body_color: Color = GameData.building_color(building_key)
+
+	# İnşaat aşamasındaysa soluk göster
+	if not is_constructed:
+		body_color = body_color.darkened(0.5)
+
+	# Bina gövdesi
+	draw_rect(Rect2(-half, -half, half*2, half*2), body_color)
+	draw_rect(Rect2(-half, -half, half*2, half*2), Color.BLACK, false, 2.0)
+
+	# Kod harfi
+	var code: String = building_data.get("code", "?")
+	var font := ThemeDB.fallback_font
+	var font_size := 16
+	var text_size := font.get_string_size(code, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+	draw_string(font, Vector2(-text_size.x*0.5, text_size.y*0.35), code,
+		HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
+
+	# İnşaat ilerleme çubuğu
+	if not is_constructed:
+		var bar_w := half * 2
+		draw_rect(Rect2(-half, half+2, bar_w, 4), Color(0.2,0.2,0.2))
+		draw_rect(Rect2(-half, half+2, bar_w*build_progress, 4), Color(0.3,0.9,0.3))
+	else:
+		# Output bin dolu sayısı (küçük yeşil noktalar)
+		var filled := _count_output_filled()
+		for i in range(min(filled, 8)):
+			draw_circle(Vector2(-half + 3 + i*4, -half - 4), 1.5,
+				GameData.resource_color(produces))
+
+func _count_output_filled() -> int:
+	var n := 0
+	for s in output_bins:
+		if s != null: n += 1
+	return n
 
 # =============================================================================
 # GÜNCELLEME (GameManager çağırır)
@@ -94,6 +139,7 @@ func _attempt_production() -> void:
 
 	_eff_success += 1
 	_update_efficiency()
+	queue_redraw()
 	emit_signal("production_completed", self, produces)
 
 func _output_full() -> bool:
@@ -148,6 +194,7 @@ func remove_from_output_bin(index: int) -> GameResource:
 	if res != null:
 		output_bins[index] = null
 		res.pick_up_by_robot()
+		queue_redraw()
 	return res
 
 func get_available_output() -> int:
@@ -189,6 +236,8 @@ func repair(amount: float) -> void:
 func complete_construction() -> void:
 	is_constructed = true
 	build_progress = 1.0
+	queue_redraw()
 
 func update_build_progress(p: float) -> void:
 	build_progress = clamp(p, 0.0, 1.0)
+	queue_redraw()

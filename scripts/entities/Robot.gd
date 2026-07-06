@@ -34,6 +34,34 @@ const TILE_SIZE: float = 32.0
 func _ready() -> void:
 	robot_data = GameData.ROBOTS.get(robot_type, {})
 	speed      = robot_data.get("speed", 1.0) * TILE_SIZE * 2.0
+	z_index = 10  # bina ve zeminin üstünde
+	queue_redraw()
+
+# =============================================================================
+# ÇİZİM (kod-sprite: üçgen gövde + taşınan kaynak)
+# =============================================================================
+
+func _draw() -> void:
+	# Robot türüne göre renk
+	var body_col := Color(0.85, 0.85, 0.90)  # transporter varsayılan
+	match robot_type:
+		"worker":            body_col = Color(0.95, 0.75, 0.20)
+		"heavy_transporter": body_col = Color(0.60, 0.65, 0.95)
+		"scout":             body_col = Color(0.40, 0.90, 0.50)
+
+	# Üçgen gövde (yön göstermez, sadece ayırt için)
+	var pts := PackedVector2Array([
+		Vector2(0, -8), Vector2(7, 6), Vector2(-7, 6)
+	])
+	draw_colored_polygon(pts, body_col)
+	draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[0]]),
+		Color.BLACK, 1.5)
+
+	# Taşınan kaynak (üstünde renkli kutu)
+	if cargo != null:
+		var col = GameData.resource_color(cargo.resource_type)
+		draw_rect(Rect2(-5, -14, 10, 10), col)
+		draw_rect(Rect2(-5, -14, 10, 10), Color.BLACK, false, 1.0)
 
 # =============================================================================
 # HAREKET
@@ -96,6 +124,8 @@ func _do_pickup() -> void:
 		emit_signal("task_completed", self)
 		return
 	cargo = res
+	res.visible = false  # robot kendi _draw'unda gösterir, çift görüntü olmasın
+	queue_redraw()
 	emit_signal("resource_picked_up", self, res)
 	state = State.IDLE  # UnitManager yeni görev atar
 
@@ -113,6 +143,7 @@ func _do_dropoff() -> void:
 	target_building = null
 	target_bin_index = -1
 	state           = State.IDLE
+	queue_redraw()
 	emit_signal("task_completed", self)
 
 # =============================================================================

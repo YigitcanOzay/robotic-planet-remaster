@@ -257,3 +257,42 @@ static func get_unlocked_at_level(level: int) -> Array:
 		if lvl <= level:
 			result.append_array(UNLOCKS[lvl])
 	return result
+
+# --- KAYNAK RENKLERİ (kod-çizim sprite'lar için) ---
+
+const RESOURCE_COLORS: Dictionary = {
+	"water":          Color(0.30, 0.60, 0.95),
+	"stone":          Color(0.55, 0.55, 0.55),
+	"crystal":        Color(0.60, 0.30, 0.85),
+	"power":          Color(0.95, 0.85, 0.20),
+	"iron":           Color(0.75, 0.45, 0.30),
+	"yellow_crystal": Color(0.90, 0.90, 0.20),
+	"energy":         Color(0.20, 0.90, 0.90),
+	"titanium":       Color(0.80, 0.80, 0.85),
+	"fuel":           Color(0.90, 0.50, 0.15),
+	"asphalt":        Color(0.25, 0.25, 0.25),
+	"uranium":        Color(0.40, 0.90, 0.30),
+	"metal":          Color(0.65, 0.70, 0.80),
+	"tech":           Color(0.90, 0.40, 0.60),
+}
+
+static func resource_color(res_type: String) -> Color:
+	return RESOURCE_COLORS.get(res_type, Color.WHITE)
+
+# --- BİNA KATEGORİ RENKLERİ ---
+
+const BUILDING_CATEGORY_COLORS: Dictionary = {
+	"mine":    Color(0.45, 0.35, 0.25),  # kahve - madenler
+	"factory": Color(0.30, 0.35, 0.50),  # mavi-gri - fabrikalar
+	"special": Color(0.50, 0.45, 0.20),  # hardal - özel
+	"hq":      Color(0.70, 0.15, 0.15),  # kırmızı - HQ
+}
+
+static func building_category(building_key: String) -> String:
+	if building_key in MINES:            return "mine"
+	if building_key in FACTORIES:        return "factory"
+	if building_key == "hq":             return "hq"
+	return "special"
+
+static func building_color(building_key: String) -> Color:
+	return BUILDING_CATEGORY_COLORS.get(building_category(building_key), Color.GRAY)

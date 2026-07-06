@@ -59,8 +59,18 @@ func update(delta: float) -> void:
 func _update_construction(delta: float) -> void:
 	var done: Array = []
 	for entry in construction_queue:
-		entry["elapsed"] += delta
 		var b: Building = entry["building"]
+		# Zaten tamamlanmışsa (örn. başlangıç binası) kuyruktan çıkar
+		if b.is_constructed:
+			done.append(entry)
+			continue
+		# Sıfır inşa süreli bina (HQ) → anında tamamla
+		if entry["build_time"] <= 0.0:
+			b.complete_construction()
+			done.append(entry)
+			emit_signal("building_completed", b)
+			continue
+		entry["elapsed"] += delta
 		var progress = entry["elapsed"] / entry["build_time"]
 		b.update_build_progress(progress)
 		if progress >= 1.0:
@@ -91,9 +101,14 @@ func get_buildings_producing(resource_type: String) -> Array[Building]:
 func get_buildings_needing_input(resource_type: String) -> Array[Building]:
 	var result: Array[Building] = []
 	for b in buildings:
-		if b.is_constructed and resource_type in b.inputs_needed:
-			if b.has_input_space(resource_type):
-				result.append(b)
+		if not b.is_constructed:
+			continue
+		# Fabrika: bu kaynağı girdi olarak istiyor
+		var needs = resource_type in b.inputs_needed
+		# Depo: üretmez ama input slotu var → her kaynağı kabul eder
+		var is_storage = b.produces == "" and b.max_input_slots > 0
+		if (needs or is_storage) and b.has_input_space(resource_type):
+			result.append(b)
 	return result
 
 func get_nearest_with_output(pos: Vector2, player: int) -> Dictionary:
@@ -115,3 +130,20 @@ func _on_building_destroyed(building: Building) -> void:
 	if building == ai_hq:     ai_hq     = null
 	map_system.remove_building_tiles(building.grid_position)
 	emit_signal("building_destroyed", building)
+
+# =============================================================================
+# HUD için: bir oyuncunun tüm binlerindeki kaynak sayımı
+# =============================================================================
+
+func count_resources(player: int) -> Dictionary:
+	var totals: Dictionary = {}
+	for b in buildings:
+		if b.owner_player != player:
+			continue
+		for slot in b.output_bins:
+			if slot != null:
+				totals[slot.resource_type] = totals.get(slot.resource_type, 0) + 1
+		for slot in b.input_bins:
+			if slot != null:
+				totals[slot.resource_type] = totals.get(slot.resource_type, 0) + 1
+	return totals

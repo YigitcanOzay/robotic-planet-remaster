@@ -56,16 +56,36 @@ func _init_map() -> void:
 	building_manager.place_building("hq", Vector2i(5, 5), 0)
 	building_manager.place_building("hq", Vector2i(map_width-6, map_height-6), 1)
 
+	# Başlangıç binaları (ekonomi testi):
+	# Madenler girdisiz üretir → robot Storage'a taşır (en net görünür akış)
+	_place_starter("iron_mine",  Vector2i(8, 5))
+	_place_starter("stone_mine", Vector2i(8, 8))
+	_place_starter("storage",    Vector2i(11, 6))
+
+	# Kamera sinirlarini harita boyutuna gore ayarla
 	var cam = get_node_or_null("Camera2D")
 	if cam and cam.has_method("set_map_bounds"):
 		cam.set_map_bounds(map_width * MapSystem.TILE_SIZE, map_height * MapSystem.TILE_SIZE)
 
+	# Kamerayı başlangıç üssüne getir
+	if cam:
+		cam.position = map_system.grid_to_world(Vector2i(9, 7))
+
+func _place_starter(key: String, pos: Vector2i) -> void:
+	# Tile'ı garanti grass yap (rastgele forest/rock olmasın)
+	map_system.set_tile(pos, MapSystem.TileType.GRASS)
+	# Test binaları anında tamamlanmış olsun (inşaat beklemesin)
+	var b = building_manager.place_building(key, pos, 0)
+	if b != null:
+		b.complete_construction()
+
 func _spawn_starters() -> void:
 	if unit_manager == null or map_system == null: return
-	var base = map_system.grid_to_world(Vector2i(6, 5))
-	unit_manager.spawn_robot("transporter", base + Vector2(0,  32), 0)
-	unit_manager.spawn_robot("transporter", base + Vector2(32, 32), 0)
-	unit_manager.spawn_robot("worker",      base + Vector2(16, 0),  0)
+	# Robotları madenlerle depo arasına koy
+	var p = map_system.grid_to_world(Vector2i(9, 6))
+	unit_manager.spawn_robot("transporter", p + Vector2(0,  0), 0)
+	unit_manager.spawn_robot("transporter", p + Vector2(32, 0), 0)
+	unit_manager.spawn_robot("transporter", p + Vector2(0, 32), 0)
 
 # =============================================================================
 func _process(delta: float) -> void:

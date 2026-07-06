@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/GameManager.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/systems/MapSystem.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/systems/BuildingManager.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/systems/UnitManager.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/systems/CameraController.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/systems/HUD.gd" id="6"]
 
 [node name="MainGame" type="Node"]
 script = ExtResource("1")
@@ -22,6 +23,9 @@ script = ExtResource("3")
 script = ExtResource("4")
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(896, 896)
-zoom = Vector2(0.5, 0.5)
+position = Vector2(288, 224)
+zoom = Vector2(1.0, 1.0)
 script = ExtResource("5")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("6")
