@@ -5,7 +5,7 @@ config_version=5
 [application]
 
 config/name="Robotic Planet Remaster"
-config/version="0.2.1"
+config/version="0.2.2"
 run/main_scene="res://scenes/game/main_game.tscn"
 config/features=PackedStringArray("4.2", "Forward Plus")
 
@@ -22,11 +22,6 @@ window/handheld/orientation=1
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
-
-[input_devices]
-
-pointing/emulate_touch_from_mouse=true
-pointing/emulate_mouse_from_touch=true
 
 [physics]
 
