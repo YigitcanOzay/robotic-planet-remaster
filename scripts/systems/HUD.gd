@@ -14,6 +14,9 @@ var camera: Camera2D = null
 var resource_label: Label
 var speed_label: Label
 var status_label: Label
+var debug_label: Label   # GEÇİCİ: input teşhisi için, sorun çözülünce kaldırılacak
+var _frame_count: int = 0
+var _input_event_seen: bool = false
 
 # Yerleştirme durumu
 var placing_key: String = ""   # "" ise yerleştirme kapalı
@@ -31,6 +34,9 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_update_resource_label()
+	_frame_count += 1
+	if not _input_event_seen:
+		debug_label.text = "input: henüz event yok | frame=%d" % _frame_count
 
 # =============================================================================
 # UI OLUŞTUR
@@ -46,6 +52,14 @@ func _build_ui() -> void:
 	resource_label.text = "Kaynaklar yükleniyor..."
 	resource_label.add_theme_font_size_override("font_size", 20)
 	top.add_child(resource_label)
+
+	# --- GEÇİCİ: input teşhis etiketi ---
+	debug_label = Label.new()
+	debug_label.text = "input: (henüz yok)"
+	debug_label.position = Vector2(10, 100)
+	debug_label.add_theme_font_size_override("font_size", 22)
+	debug_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
+	add_child(debug_label)
 
 	# --- Durum etiketi (yerleştirme modu) ---
 	status_label = Label.new()
@@ -113,6 +127,20 @@ func _start_placing(key: String) -> void:
 	status_label.text = "Yerleştir: %s — haritaya dokun (iptal: tekrar bas)" % data.get("name", key)
 
 func _input(event: InputEvent) -> void:
+	# GEÇİCİ: hangi event tiplerinin geldiğini teşhis et
+	if event is InputEventScreenTouch:
+		_input_event_seen = true
+		debug_label.text = "input: SCREEN_TOUCH pressed=%s pos=%s" % [event.pressed, event.position]
+	elif event is InputEventScreenDrag:
+		_input_event_seen = true
+		debug_label.text = "input: SCREEN_DRAG pos=%s rel=%s" % [event.position, event.relative]
+	elif event is InputEventMouseButton:
+		_input_event_seen = true
+		debug_label.text = "input: MOUSE_BUTTON pressed=%s pos=%s" % [event.pressed, event.position]
+	elif event is InputEventMouseMotion:
+		_input_event_seen = true
+		debug_label.text = "input: MOUSE_MOTION pos=%s" % [event.position]
+
 	if placing_key == "":
 		return
 	# Ekrana dokunma → grid pozisyonuna bina koy
