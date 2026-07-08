@@ -150,9 +150,15 @@ jobs:
       - name: Install Android Build Template
         timeout-minutes: 5
         run: |
-          timeout 240 ./godot --headless --install-android-build-template
+          timeout 240 ./godot --headless --install-android-build-template --quit || true
           echo "✓ android/build durumu:"
-          ls -la android/build || echo "⚠ android/build klasörü oluşmadı!"
+          if [ -d "android/build" ]; then
+            ls -la android/build
+            echo "✓ android/build klasörü mevcut, devam ediliyor"
+          else
+            echo "❌ android/build klasörü oluşmadı, build başarısız olacak"
+            exit 1
+          fi
 
       # 11. Build klasörü oluştur
       - name: Create Build Directory
