@@ -37,25 +37,7 @@ jobs:
           unzip -q Godot_v4.2.1-stable_export_templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
 
-      # 5. Gradle build template'i projeye kur (headless ortamda GUI adımının yerine geçer)
-      #    "Project > Install Android Build Template" bunu GUI'de yapar; burada manuel çıkarıyoruz.
-      - name: Install Android Build Template
-        run: |
-          TEMPLATE_DIR=~/.local/share/godot/export_templates/4.2.1.stable
-          SOURCE_ZIP="$TEMPLATE_DIR/android_source.zip"
-          if [ ! -f "$SOURCE_ZIP" ]; then
-            echo "❌ android_source.zip bulunamadı: $SOURCE_ZIP"
-            echo "Template klasörü içeriği:"
-            ls -la "$TEMPLATE_DIR"
-            exit 1
-          fi
-          mkdir -p android/build
-          unzip -q "$SOURCE_ZIP" -d android/build
-          touch android/build/.gdignore
-          echo "✓ android/build kuruldu:"
-          ls -la android/build
-
-      # 6. Android SDK kur + Gradle'ın istediği spesifik NDK/build-tools sürümlerini indir
+      # 5. Android SDK kur + Gradle'ın istediği spesifik NDK/build-tools sürümlerini indir
       #    Godot 4.2 config.gradle sabit değerleri: buildTools 33.0.2, ndk 23.2.8568313
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -65,7 +47,7 @@ jobs:
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;23.2.8568313" "cmake;3.10.2.4988404"
 
-      # 7. Debug keystore oluştur (imzalama için)
+      # 6. Debug keystore oluştur (imzalama için)
       - name: Create Debug Keystore
         run: |
           keytool -genkey -v \
@@ -78,7 +60,7 @@ jobs:
             -keypass android \
             -dname "CN=Android Debug,O=Android,C=US"
 
-      # 8. Godot editor ayarlarını yapılandır
+      # 7. Godot editor ayarlarını yapılandır (SDK yolu, keystore)
       - name: Configure Godot Android Settings
         run: |
           mkdir -p ~/.config/godot
@@ -92,7 +74,7 @@ jobs:
           export/android/debug_keystore_pass = "android"
           EOF
 
-      # 9. Export preset oluştur — GRADLE BUILD AÇIK
+      # 8. Export preset oluştur — GRADLE BUILD AÇIK
       - name: Create Export Presets
         run: |
           cat > export_presets.cfg << 'EOF'
@@ -148,6 +130,16 @@ jobs:
           screen/support_large=true
           screen/support_xlarge=true
           EOF
+
+      # 9. Gradle build template'i projeye kur — Godot'un resmi CLI flag'i ile
+      #    (Manuel unzip YETERSİZ: Godot ek bir kurulum mantığı çalıştırıyor,
+      #     sadece dosya kopyalamak "no version info exists" hatası veriyor.
+      #     Export presets + SDK ayarları hazır olduktan SONRA çalıştırılıyor.)
+      - name: Install Android Build Template
+        run: |
+          ./godot --headless --install-android-build-template
+          echo "✓ android/build durumu:"
+          ls -la android/build || echo "⚠ android/build klasörü oluşmadı!"
 
       # 10. Build klasörü oluştur
       - name: Create Build Directory
