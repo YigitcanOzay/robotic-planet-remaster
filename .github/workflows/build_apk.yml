@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:  # Manuel tetikleme butonu
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Java kur (Android için gerekli)
+      # 2. Java kur (Gradle için JDK 17 şart)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -29,7 +29,7 @@ jobs:
           mv Godot_v4.2.1-stable_linux.x86_64 godot
           chmod +x godot
 
-      # 4. Godot Android export template indir
+      # 4. Godot Android export template indir (APK şablonu + android_source.zip içerir)
       - name: Download Android Export Templates
         run: |
           mkdir -p ~/.local/share/godot/export_templates/4.2.1.stable
@@ -37,11 +37,35 @@ jobs:
           unzip -q Godot_v4.2.1-stable_export_templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
 
-      # 5. Android SDK kur
+      # 5. Gradle build template'i projeye kur (headless ortamda GUI adımının yerine geçer)
+      #    "Project > Install Android Build Template" bunu GUI'de yapar; burada manuel çıkarıyoruz.
+      - name: Install Android Build Template
+        run: |
+          TEMPLATE_DIR=~/.local/share/godot/export_templates/4.2.1.stable
+          SOURCE_ZIP="$TEMPLATE_DIR/android_source.zip"
+          if [ ! -f "$SOURCE_ZIP" ]; then
+            echo "❌ android_source.zip bulunamadı: $SOURCE_ZIP"
+            echo "Template klasörü içeriği:"
+            ls -la "$TEMPLATE_DIR"
+            exit 1
+          fi
+          mkdir -p android/build
+          unzip -q "$SOURCE_ZIP" -d android/build
+          touch android/build/.gdignore
+          echo "✓ android/build kuruldu:"
+          ls -la android/build
+
+      # 6. Android SDK kur + Gradle'ın istediği spesifik NDK/build-tools sürümlerini indir
+      #    Godot 4.2 config.gradle sabit değerleri: buildTools 33.0.2, ndk 23.2.8568313
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # 6. Debug keystore oluştur (imzalama için)
+      - name: Install Required SDK Components
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;23.2.8568313" "cmake;3.10.2.4988404"
+
+      # 7. Debug keystore oluştur (imzalama için)
       - name: Create Debug Keystore
         run: |
           keytool -genkey -v \
@@ -54,7 +78,7 @@ jobs:
             -keypass android \
             -dname "CN=Android Debug,O=Android,C=US"
 
-      # 7. Godot editor ayarlarını yapılandır
+      # 8. Godot editor ayarlarını yapılandır
       - name: Configure Godot Android Settings
         run: |
           mkdir -p ~/.config/godot
@@ -68,7 +92,7 @@ jobs:
           export/android/debug_keystore_pass = "android"
           EOF
 
-      # 8. Export preset oluştur
+      # 9. Export preset oluştur — GRADLE BUILD AÇIK
       - name: Create Export Presets
         run: |
           cat > export_presets.cfg << 'EOF'
@@ -92,7 +116,7 @@ jobs:
 
           custom_template/debug=""
           custom_template/release=""
-          gradle_build/use_gradle_build=false
+          gradle_build/use_gradle_build=true
           gradle_build/gradle_build_directory=""
           gradle_build/android_source_template=""
           architectures/armeabi-v7a=true
@@ -107,7 +131,7 @@ jobs:
           keystore/release_password=""
           one_click_deploy/clear_previous_install=false
           version/code=1
-          version/name="0.1.2"
+          version/name="0.2.3"
           package/unique_name="com.roboticplanet.remaster"
           package/name="Robotic Planet Remaster"
           package/signed=true
@@ -125,29 +149,45 @@ jobs:
           screen/support_xlarge=true
           EOF
 
-      # 9. Build klasörü oluştur
+      # 10. Build klasörü oluştur
       - name: Create Build Directory
         run: mkdir -p build
 
-      # 10. APK build et
+      # 11. APK build et (Gradle bu adımda arka planda çalışır, süre uzayabilir)
       - name: Build APK
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           ./godot --headless --export-debug "Android" build/RoboticPlanet.apk
 
-      # 11. APK'yı artifact olarak kaydet (indirilebilir)
+      # 12. APK'yı artifact olarak kaydet (indirilebilir)
       - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: RoboticPlanet-APK
           path: build/RoboticPlanet.apk
           retention-days: 30
+          if-no-files-found: warn
 
-      # 12. Build başarılıysa özet göster
+      # 13. Hata olursa Gradle loglarını da yükle (teşhis için)
+      - name: Upload Gradle Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-logs
+          path: |
+            android/build/**/build/outputs/logs/**
+            android/.gradle/**/*.log
+          if-no-files-found: ignore
+
+      # 14. Build başarılıysa özet göster
       - name: Build Summary
         run: |
           if [ -f "build/RoboticPlanet.apk" ]; then
             SIZE=$(du -sh build/RoboticPlanet.apk | cut -f1)
-            echo "✅ APK başarıyla oluşturuldu!"
+            echo "✅ APK başarıyla oluşturuldu (Gradle build)!"
             echo "📦 Boyut: $SIZE"
             echo "📍 Konum: build/RoboticPlanet.apk"
           else
