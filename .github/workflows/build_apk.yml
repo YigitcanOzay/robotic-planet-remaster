@@ -131,22 +131,36 @@ jobs:
           screen/support_xlarge=true
           EOF
 
-      # 9. Gradle build template'i projeye kur — Godot'un resmi CLI flag'i ile
+      # 9. Projeyi bir kez editor modunda aç-tara-kapat (ZORUNLU İLK ADIM)
+      #    Neden: .godot/ cache klasörü yoksa (her CI checkout'unda öyle),
+      #    class_name kayıtları henüz global tabloya işlenmemiş olur ve
+      #    sonraki adımlarda "Could not find type X in scope" hatası çıkar.
+      #    Bilinen Godot davranışı: godotengine/godot#82392, #81615
+      - name: Import Project (populate .godot cache)
+        timeout-minutes: 5
+        run: |
+          timeout 240 ./godot --headless --editor --quit --path . || true
+          echo "✓ .godot cache durumu:"
+          ls -la .godot/ 2>/dev/null || echo "⚠ .godot/ klasörü oluşmadı!"
+
+      # 10. Gradle build template'i projeye kur — Godot'un resmi CLI flag'i ile
       #    (Manuel unzip YETERSİZ: Godot ek bir kurulum mantığı çalıştırıyor,
       #     sadece dosya kopyalamak "no version info exists" hatası veriyor.
       #     Export presets + SDK ayarları hazır olduktan SONRA çalıştırılıyor.)
       - name: Install Android Build Template
+        timeout-minutes: 5
         run: |
-          ./godot --headless --install-android-build-template
+          timeout 240 ./godot --headless --install-android-build-template
           echo "✓ android/build durumu:"
           ls -la android/build || echo "⚠ android/build klasörü oluşmadı!"
 
-      # 10. Build klasörü oluştur
+      # 11. Build klasörü oluştur
       - name: Create Build Directory
         run: mkdir -p build
 
-      # 11. APK build et (Gradle bu adımda arka planda çalışır, süre uzayabilir)
+      # 12. APK build et (Gradle bu adımda arka planda çalışır, süre uzayabilir)
       - name: Build APK
+        timeout-minutes: 15
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
           ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
