@@ -19,7 +19,6 @@ func _build_ui() -> void:
 	add_child(bg)
 
 	var vbox = VBoxContainer.new()
-	vbox.set_anchors_preset(Control.PRESET_CENTER)
 	vbox.position = Vector2(340, 700)
 	vbox.custom_minimum_size = Vector2(400, 0)
 	vbox.add_theme_constant_override("separation", 20)
@@ -64,7 +63,7 @@ func _build_ui() -> void:
 
 	# Versiyon bilgisi (sağ alt köşe)
 	var version_label = Label.new()
-	version_label.text = "v0.4.0"
+	version_label.text = "v0.4.1"
 	version_label.position = Vector2(950, 1850)
 	version_label.add_theme_font_size_override("font_size", 16)
 	version_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
