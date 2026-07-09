@@ -36,6 +36,10 @@ jobs:
           wget -q https://github.com/godotengine/godot/releases/download/4.2.1-stable/Godot_v4.2.1-stable_export_templates.tpz
           unzip -q Godot_v4.2.1-stable_export_templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
+          echo "=== TEŞHİS: export_templates klasör içeriği ==="
+          ls -la ~/.local/share/godot/export_templates/4.2.1.stable/ | grep -i android
+          echo "=== TEŞHİS: android_source.zip var mı, boyutu ne ==="
+          find ~/.local/share/godot/export_templates/4.2.1.stable/ -iname "*android*"
 
       # 5. Android SDK kur + Gradle'ın istediği spesifik NDK/build-tools sürümlerini indir
       #    Godot 4.2 config.gradle sabit değerleri: buildTools 33.0.2, ndk 23.2.8568313
@@ -143,20 +147,51 @@ jobs:
           echo "✓ .godot cache durumu:"
           ls -la .godot/ 2>/dev/null || echo "⚠ .godot/ klasörü oluşmadı!"
 
-      # 10. Gradle build template'i projeye kur — Godot'un resmi CLI flag'i ile
-      #    (Manuel unzip YETERSİZ: Godot ek bir kurulum mantığı çalıştırıyor,
-      #     sadece dosya kopyalamak "no version info exists" hatası veriyor.
-      #     Export presets + SDK ayarları hazır olduktan SONRA çalıştırılıyor.)
+      # 10. Gradle build template'i projeye kur
+      #    ÖNCE resmi CLI flag'i denenir (3 kez test edildi, sessizce başarısız oluyor,
+      #    muhtemelen GUI onay diyaloğu bekliyor, headless'ta çalışmıyor).
+      #    Flag işe yaramazsa YEDEK: android_source.zip'i manuel çıkar.
       - name: Install Android Build Template
         timeout-minutes: 5
         run: |
           timeout 240 ./godot --headless --install-android-build-template --quit || true
-          echo "✓ android/build durumu:"
-          if [ -d "android/build" ]; then
-            ls -la android/build
-            echo "✓ android/build klasörü mevcut, devam ediliyor"
+
+          if [ -d "android/build" ] && [ -f "android/build/build.gradle" ]; then
+            echo "✓ CLI flag işe yaradı, android/build hazır"
           else
-            echo "❌ android/build klasörü oluşmadı, build başarısız olacak"
+            echo "⚠ CLI flag işe yaramadı, manuel çıkarma deneniyor..."
+            SOURCE_ZIP=~/.local/share/godot/export_templates/4.2.1.stable/android_source.zip
+
+            echo "=== TEŞHİS: android_source.zip içeriği (ilk 20 satır) ==="
+            unzip -l "$SOURCE_ZIP" | head -20
+
+            rm -rf android/build
+            mkdir -p android
+            unzip -q "$SOURCE_ZIP" -d android/build_extracted
+
+            echo "=== TEŞHİS: çıkarma sonrası klasör yapısı ==="
+            find android/build_extracted -maxdepth 3 -type d
+
+            # Eğer build.gradle bir alt klasördeyse (örn. build_extracted/build/build.gradle),
+            # doğru klasörü android/build olarak taşı
+            if [ -f "android/build_extracted/build.gradle" ]; then
+              mv android/build_extracted android/build
+            elif [ -f "android/build_extracted/build/build.gradle" ]; then
+              mv android/build_extracted/build android/build
+              rm -rf android/build_extracted
+            else
+              echo "❌ build.gradle hiçbir yerde bulunamadı, yapı beklenenden farklı"
+              find android/build_extracted -name "build.gradle"
+            fi
+            touch android/.gdignore 2>/dev/null || true
+          fi
+
+          echo "=== SONUÇ: android/build durumu ==="
+          if [ -d "android/build" ] && [ -f "android/build/build.gradle" ]; then
+            ls -la android/build
+            echo "✓ android/build/build.gradle mevcut, devam ediliyor"
+          else
+            echo "❌ android/build/build.gradle bulunamadı, build başarısız olacak"
             exit 1
           fi
 
