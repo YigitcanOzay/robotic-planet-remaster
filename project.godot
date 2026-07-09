@@ -6,7 +6,7 @@ config_version=5
 
 config/name="Robotic Planet Remaster"
 config/version="0.2.2"
-run/main_scene="res://scenes/game/main_game.tscn"
+run/main_scene="res://scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.2", "Forward Plus")
 
 [display]

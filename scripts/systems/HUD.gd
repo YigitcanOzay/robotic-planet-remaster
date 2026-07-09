@@ -70,6 +70,15 @@ func _build_ui() -> void:
 	resource_label.add_theme_font_size_override("font_size", 20)
 	top.add_child(resource_label)
 
+	# --- Ana menüye dönüş butonu (sağ üst) ---
+	var menu_btn = Button.new()
+	menu_btn.text = "☰ Menü"
+	menu_btn.position = Vector2(950, 10)
+	menu_btn.custom_minimum_size = Vector2(140, 50)
+	menu_btn.add_theme_font_size_override("font_size", 20)
+	menu_btn.pressed.connect(_on_menu_pressed)
+	add_child(menu_btn)
+
 	# --- GEÇİCİ: input teşhis etiketi ---
 	debug_label = Label.new()
 	debug_label.text = "input: (henüz yok)"
@@ -153,6 +162,9 @@ func _build_ui() -> void:
 	panel_vbox.add_child(info_label)
 
 # =============================================================================
+func _on_menu_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
 func _zoom_camera(factor: float) -> void:
 	if camera and camera.has_method("zoom_by"):
 		camera.zoom_by(factor)
