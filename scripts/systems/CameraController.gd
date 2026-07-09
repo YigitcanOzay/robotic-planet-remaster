@@ -12,6 +12,7 @@ const ZOOM_MAX := 2.0
 # Aktif dokunuşlar: index → son ekran pozisyonu
 var _touches: Dictionary = {}
 var _last_pinch_dist: float = -1.0
+var _mouse_dragging: bool = false  # YEDEK: mouse pan için
 
 var map_min := Vector2.ZERO
 var map_max := Vector2.ZERO
@@ -20,8 +21,15 @@ func set_map_bounds(w: float, h: float) -> void:
 	map_min = Vector2.ZERO
 	map_max = Vector2(w, h)
 
+func zoom_by(factor: float) -> void:
+	"""HUD butonlarından çağrılır — pinch zoom mouse ile mümkün olmadığında yedek kontrol."""
+	var new_zoom = clamp(zoom.x * factor, ZOOM_MIN, ZOOM_MAX)
+	zoom = Vector2(new_zoom, new_zoom)
+	_clamp_position()
+
 # =============================================================================
 func _input(event: InputEvent) -> void:
+	# --- GERÇEK TOUCH (bazı ortamlarda çalışır) ---
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_touches[event.index] = event.position
@@ -39,6 +47,18 @@ func _input(event: InputEvent) -> void:
 		elif _touches.size() == 2:
 			# İki parmak → pinch zoom
 			_handle_pinch()
+
+	# --- YEDEK: MOUSE (legacy Android export'ta touch, mouse'a çevriliyor) ---
+	# Not: Mouse tek imleç olduğu için pinch-zoom mouse ile yapılamaz,
+	# bu yüzden sadece pan (sürükleme) buradan destekleniyor.
+	elif event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_mouse_dragging = event.pressed
+
+	elif event is InputEventMouseMotion:
+		if _mouse_dragging:
+			position -= event.relative / zoom
+			_clamp_position()
 
 func _handle_pinch() -> void:
 	var keys = _touches.keys()

@@ -15,6 +15,7 @@ var resource_label: Label
 var speed_label: Label
 var status_label: Label
 var debug_label: Label   # GEÇİCİ: input teşhisi için, sorun çözülünce kaldırılacak
+var debug_label2: Label  # GEÇİCİ: DisplayServer/Input singleton teşhisi
 var _frame_count: int = 0
 var _input_event_seen: bool = false
 
@@ -37,6 +38,12 @@ func _process(_delta: float) -> void:
 	_frame_count += 1
 	if not _input_event_seen:
 		debug_label.text = "input: henüz event yok | frame=%d" % _frame_count
+
+	# GEÇİCİ: Input singleton'ının gerçek zamanlı durumu (event log'dan bağımsız)
+	if debug_label2:
+		var mp = get_viewport().get_mouse_position()
+		var mouse_down = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+		debug_label2.text = "mouse_pos=%s | mouse_down=%s" % [mp, mouse_down]
 
 # =============================================================================
 # UI OLUŞTUR
@@ -61,6 +68,14 @@ func _build_ui() -> void:
 	debug_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
 	add_child(debug_label)
 
+	# --- GEÇİCİ: DisplayServer/Input singleton teşhis etiketi ---
+	debug_label2 = Label.new()
+	debug_label2.text = "DisplayServer: (henüz yok)"
+	debug_label2.position = Vector2(10, 140)
+	debug_label2.add_theme_font_size_override("font_size", 20)
+	debug_label2.add_theme_color_override("font_color", Color(1, 0.7, 0.2))
+	add_child(debug_label2)
+
 	# --- Durum etiketi (yerleştirme modu) ---
 	status_label = Label.new()
 	status_label.position = Vector2(10, 60)
@@ -79,6 +94,10 @@ func _build_ui() -> void:
 	_add_button(bottom, "×1", func(): game_manager.set_speed(1.0))
 	_add_button(bottom, "×2", func(): game_manager.set_speed(2.0))
 	_add_button(bottom, "×4", func(): game_manager.set_speed(4.0))
+
+	# Zoom butonları (pinch mouse ile çalışmadığı için yedek kontrol)
+	_add_button(bottom, "🔍+", func(): _zoom_camera(1.2))
+	_add_button(bottom, "🔍-", func(): _zoom_camera(1.0 / 1.2))
 
 	speed_label = Label.new()
 	speed_label.text = "  ×1  "
@@ -101,6 +120,10 @@ func _build_ui() -> void:
 		_add_build_button(build_row, label_text, key)
 
 # =============================================================================
+func _zoom_camera(factor: float) -> void:
+	if camera and camera.has_method("zoom_by"):
+		camera.zoom_by(factor)
+
 func _add_button(parent: Node, text: String, callback: Callable) -> void:
 	var b = Button.new()
 	b.text = text
@@ -143,10 +166,14 @@ func _input(event: InputEvent) -> void:
 
 	if placing_key == "":
 		return
-	# Ekrana dokunma → grid pozisyonuna bina koy
+	# Ekrana dokunma → grid pozisyonuna bina koy (gerçek touch ortamı)
 	if event is InputEventScreenTouch and event.pressed:
 		_try_place_at_screen(event.position)
 		get_viewport().set_input_as_handled()  # kamera bu dokunuşu görmesin
+	# YEDEK: mouse click (legacy Android export'ta touch, mouse'a çevriliyor)
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_try_place_at_screen(event.position)
+		get_viewport().set_input_as_handled()
 
 func _try_place_at_screen(screen_pos: Vector2) -> void:
 	if camera == null or map_system == null:
