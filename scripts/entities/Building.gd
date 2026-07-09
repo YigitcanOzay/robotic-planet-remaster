@@ -103,6 +103,17 @@ func _count_output_filled() -> int:
 		if s != null: n += 1
 	return n
 
+func count_output_filled() -> int:
+	"""Public erişim — HUD bilgi panelinde kullanılır."""
+	return _count_output_filled()
+
+func count_input_filled() -> int:
+	"""Public erişim — HUD bilgi panelinde kullanılır."""
+	var n := 0
+	for s in input_bins:
+		if s != null: n += 1
+	return n
+
 # =============================================================================
 # GÜNCELLEME (GameManager çağırır)
 # =============================================================================

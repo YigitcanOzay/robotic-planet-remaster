@@ -7,8 +7,16 @@ extends CanvasLayer
 
 var game_manager: Node = null
 var building_manager: BuildingManager = null
+var unit_manager: UnitManager = null
 var map_system: MapSystem = null
 var camera: Camera2D = null
+
+# Seçim durumu
+var selected_building: Building = null
+var selected_robot: Robot = null
+var info_panel: PanelContainer = null
+var info_label: Label = null
+const ROBOT_SELECT_RADIUS: float = 24.0  # px, dünya koordinatında
 
 # UI referansları
 var resource_label: Label
@@ -29,12 +37,14 @@ const PLACEABLE := ["stone_mine", "iron_mine", "fuel_station", "metal_factory"]
 func _ready() -> void:
 	game_manager = get_parent()
 	building_manager = game_manager.get_node_or_null("BuildingManager")
+	unit_manager = game_manager.get_node_or_null("UnitManager")
 	map_system = game_manager.get_node_or_null("MapSystem")
 	camera = game_manager.get_node_or_null("Camera2D")
 	_build_ui()
 
 func _process(_delta: float) -> void:
 	_update_resource_label()
+	_update_info_panel()
 	_frame_count += 1
 	if not _input_event_seen:
 		debug_label.text = "input: henüz event yok | frame=%d" % _frame_count
@@ -119,6 +129,29 @@ func _build_ui() -> void:
 		var label_text = data.get("code", "?")
 		_add_build_button(build_row, label_text, key)
 
+	# --- Bilgi paneli (sağda, seçim yokken gizli) ---
+	info_panel = PanelContainer.new()
+	info_panel.position = Vector2(680, 10)
+	info_panel.custom_minimum_size = Vector2(380, 220)
+	info_panel.visible = false
+	add_child(info_panel)
+
+	var panel_vbox = VBoxContainer.new()
+	panel_vbox.add_theme_constant_override("separation", 4)
+	info_panel.add_child(panel_vbox)
+
+	var close_btn = Button.new()
+	close_btn.text = "✕ Kapat"
+	close_btn.custom_minimum_size = Vector2(0, 40)
+	close_btn.pressed.connect(func(): _clear_selection())
+	panel_vbox.add_child(close_btn)
+
+	info_label = Label.new()
+	info_label.text = ""
+	info_label.add_theme_font_size_override("font_size", 20)
+	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	panel_vbox.add_child(info_label)
+
 # =============================================================================
 func _zoom_camera(factor: float) -> void:
 	if camera and camera.has_method("zoom_by"):
@@ -165,6 +198,11 @@ func _input(event: InputEvent) -> void:
 		debug_label.text = "input: MOUSE_MOTION pos=%s" % [event.position]
 
 	if placing_key == "":
+		# Yerleştirme modu kapalı → tıklama SEÇİM için kullanılır
+		if event is InputEventScreenTouch and event.pressed:
+			_try_select_at_screen(event.position)
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_try_select_at_screen(event.position)
 		return
 	# Ekrana dokunma → grid pozisyonuna bina koy (gerçek touch ortamı)
 	if event is InputEventScreenTouch and event.pressed:
@@ -188,6 +226,109 @@ func _try_place_at_screen(screen_pos: Vector2) -> void:
 		placing_key = ""
 	else:
 		status_label.text = "Buraya kurulamaz, başka yere dokun"
+
+# =============================================================================
+# SEÇİM (bina / robot bilgi paneli)
+# =============================================================================
+
+func _try_select_at_screen(screen_pos: Vector2) -> void:
+	if camera == null or map_system == null:
+		return
+	var world = camera.position + (screen_pos - get_viewport().get_visible_rect().size * 0.5) / camera.zoom
+
+	# Önce bina var mı diye bak (grid-hizalı)
+	var grid = map_system.world_to_grid(world)
+	var b = map_system.get_building_at(grid)
+	if b != null:
+		_select_building(b)
+		return
+
+	# Bina yoksa en yakın robotu ara (serbest pozisyon)
+	var nearest = _find_nearest_robot(world)
+	if nearest != null:
+		_select_robot(nearest)
+		return
+
+	# Hiçbiri değilse seçimi temizle
+	_clear_selection()
+
+func _find_nearest_robot(world_pos: Vector2) -> Robot:
+	if unit_manager == null:
+		return null
+	var best: Robot = null
+	var best_dist = ROBOT_SELECT_RADIUS
+	for r in unit_manager.robots:
+		if not is_instance_valid(r):
+			continue
+		var d = r.global_position.distance_to(world_pos)
+		if d < best_dist:
+			best_dist = d
+			best = r
+	return best
+
+func _select_building(b: Building) -> void:
+	selected_building = b
+	selected_robot = null
+	info_panel.visible = true
+
+func _select_robot(r: Robot) -> void:
+	selected_robot = r
+	selected_building = null
+	info_panel.visible = true
+
+func _clear_selection() -> void:
+	selected_building = null
+	selected_robot = null
+	info_panel.visible = false
+
+func _update_info_panel() -> void:
+	if selected_building != null:
+		if not is_instance_valid(selected_building):
+			_clear_selection()
+			return
+		info_label.text = _format_building_info(selected_building)
+	elif selected_robot != null:
+		if not is_instance_valid(selected_robot):
+			_clear_selection()
+			return
+		info_label.text = _format_robot_info(selected_robot)
+
+func _format_building_info(b: Building) -> String:
+	var lines: Array = []
+	lines.append("🏭 %s" % b.building_data.get("name", b.building_key))
+	lines.append("HP: %.0f / %.0f" % [b.hp, b.max_hp])
+	lines.append("Durum: %s" % ("İnşa ediliyor (%d%%)" % int(b.build_progress * 100) if not b.is_constructed else "Aktif"))
+	if b.produces != "":
+		lines.append("Üretim: %s" % b.produces)
+		lines.append("Verimlilik: %d%%" % int(b.efficiency * 100))
+		lines.append("Çıkış bin: %d / %d dolu" % [b.count_output_filled(), b.max_output_slots])
+	if not b.inputs_needed.is_empty():
+		lines.append("Girdi bin: %d / %d dolu" % [b.count_input_filled(), b.max_input_slots])
+		var needs: Array = []
+		for k in b.inputs_needed:
+			needs.append(k)
+		lines.append("Gereken: %s" % ", ".join(needs))
+	return "\n".join(lines)
+
+func _format_robot_info(r: Robot) -> String:
+	var lines: Array = []
+	var type_name = r.robot_data.get("name", r.robot_type)
+	lines.append("🤖 %s" % type_name)
+	lines.append("Durum: %s" % _robot_state_text(r.state))
+	if r.has_cargo():
+		lines.append("Taşıyor: %s" % r.get_cargo_type())
+	else:
+		lines.append("Taşıyor: (boş)")
+	return "\n".join(lines)
+
+func _robot_state_text(state: int) -> String:
+	match state:
+		Robot.State.IDLE: return "Boşta"
+		Robot.State.MOVING_TO_PICKUP: return "Kaynağa gidiyor"
+		Robot.State.PICKING_UP: return "Kaynak alıyor"
+		Robot.State.MOVING_TO_DROPOFF: return "Teslimata gidiyor"
+		Robot.State.DROPPING_OFF: return "Teslim ediyor"
+		_: return "?"
 
 # =============================================================================
 # GÜNCELLEME
