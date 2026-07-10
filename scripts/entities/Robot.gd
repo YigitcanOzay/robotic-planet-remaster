@@ -20,13 +20,17 @@ var capacity: int    = 1
 var cargo: GameResource = null
 
 # --- Görev state machine ---
-enum State { IDLE, MOVING_TO_PICKUP, PICKING_UP, MOVING_TO_DROPOFF, DROPPING_OFF }
+enum State { IDLE, MOVING_TO_PICKUP, PICKING_UP, MOVING_TO_DROPOFF, DROPPING_OFF,
+	MOVING_TO_CONSTRUCT, CONSTRUCTING }
 var state: State = State.IDLE
 
 var target_building: Building = null
 var target_bin_index: int     = -1
 var path: PackedVector2Array  = []
 var path_index: int           = 0
+
+# --- İnşaat (sadece Worker kullanır) ---
+var construct_elapsed: float  = 0.0
 
 const TILE_SIZE: float = 32.0
 
@@ -69,12 +73,14 @@ func _draw() -> void:
 
 func _physics_process(delta: float) -> void:
 	match state:
-		State.MOVING_TO_PICKUP, State.MOVING_TO_DROPOFF:
+		State.MOVING_TO_PICKUP, State.MOVING_TO_DROPOFF, State.MOVING_TO_CONSTRUCT:
 			_move_along_path(delta)
 		State.PICKING_UP:
 			_do_pickup()
 		State.DROPPING_OFF:
 			_do_dropoff()
+		State.CONSTRUCTING:
+			_do_construct(delta)
 
 func _move_along_path(delta: float) -> void:
 	if path.is_empty() or path_index >= path.size():
@@ -92,8 +98,9 @@ func _move_along_path(delta: float) -> void:
 
 func _on_arrived() -> void:
 	velocity = Vector2.ZERO
-	if   state == State.MOVING_TO_PICKUP:  state = State.PICKING_UP
-	elif state == State.MOVING_TO_DROPOFF: state = State.DROPPING_OFF
+	if   state == State.MOVING_TO_PICKUP:    state = State.PICKING_UP
+	elif state == State.MOVING_TO_DROPOFF:   state = State.DROPPING_OFF
+	elif state == State.MOVING_TO_CONSTRUCT: state = State.CONSTRUCTING
 
 func move_to(world_pos: Vector2) -> void:
 	path       = PackedVector2Array([global_position, world_pos])
@@ -108,6 +115,13 @@ func assign_pickup_task(from_building: Building, bin_index: int) -> void:
 	target_bin_index = bin_index
 	state            = State.MOVING_TO_PICKUP
 	move_to(from_building.global_position)
+
+func assign_construct_task(building: Building) -> void:
+	"""Worker'a inşaat görevi ata. Sadece robot_type == 'worker' için anlamlıdır."""
+	target_building   = building
+	construct_elapsed  = 0.0
+	state              = State.MOVING_TO_CONSTRUCT
+	move_to(building.global_position)
 
 func assign_delivery_task(to_building: Building) -> void:
 	target_building = to_building
@@ -144,6 +158,24 @@ func _do_dropoff() -> void:
 	target_bin_index = -1
 	state           = State.IDLE
 	queue_redraw()
+	emit_signal("task_completed", self)
+
+func _do_construct(delta: float) -> void:
+	if target_building == null or not is_instance_valid(target_building):
+		state = State.IDLE
+		return
+	if target_building.is_constructed:
+		_finish_construct()
+		return
+	target_building.construction_started = true
+	construct_elapsed += delta
+	# Süre kontrolü BuildingManager._update_construction'da tutulur.
+	# Bina tamamlandığında bir sonraki frame'de yukarıdaki kontrol bunu yakalar.
+
+func _finish_construct() -> void:
+	target_building = null
+	construct_elapsed = 0.0
+	state = State.IDLE
 	emit_signal("task_completed", self)
 
 # =============================================================================

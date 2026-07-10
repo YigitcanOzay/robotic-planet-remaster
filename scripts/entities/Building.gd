@@ -18,6 +18,10 @@ var grid_position: Vector2i   = Vector2i.ZERO
 var is_constructed: bool      = false
 var build_progress: float     = 0.0
 
+# --- İnşaat ---
+var assigned_worker: Robot    = null  # inşaatı yapan robot, null ise "işçi bekleniyor"
+var construction_started: bool = false  # worker vardığında true olur, süre o zaman başlar
+
 var hp: float     = 0.0
 var max_hp: float = 0.0
 

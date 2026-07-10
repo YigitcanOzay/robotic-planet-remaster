@@ -47,6 +47,7 @@ func _find_systems() -> void:
 		building_manager.map_system = map_system
 	if unit_manager and building_manager:
 		unit_manager.building_manager = building_manager
+		unit_manager.connect_building_signals()
 	if unit_manager and map_system:
 		unit_manager.map_system = map_system
 
@@ -86,6 +87,7 @@ func _spawn_starters() -> void:
 	unit_manager.spawn_robot("transporter", p + Vector2(0,  0), 0)
 	unit_manager.spawn_robot("transporter", p + Vector2(32, 0), 0)
 	unit_manager.spawn_robot("transporter", p + Vector2(0, 32), 0)
+	unit_manager.spawn_robot("worker",      p + Vector2(32, 32), 0)
 
 # =============================================================================
 func _process(delta: float) -> void:

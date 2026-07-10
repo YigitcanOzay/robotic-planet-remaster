@@ -64,11 +64,14 @@ func _update_construction(delta: float) -> void:
 		if b.is_constructed:
 			done.append(entry)
 			continue
-		# Sıfır inşa süreli bina (HQ) → anında tamamla
+		# Sıfır inşa süreli bina (HQ) → anında tamamla, worker beklemez
 		if entry["build_time"] <= 0.0:
 			b.complete_construction()
 			done.append(entry)
 			emit_signal("building_completed", b)
+			continue
+		# Worker henüz inşaat alanına varmadıysa süre işlemez — "beklemede"
+		if not b.construction_started:
 			continue
 		entry["elapsed"] += delta
 		var progress = entry["elapsed"] / entry["build_time"]
@@ -109,6 +112,16 @@ func get_buildings_needing_input(resource_type: String) -> Array[Building]:
 		var is_storage = b.produces == "" and b.max_input_slots > 0
 		if (needs or is_storage) and b.has_input_space(resource_type):
 			result.append(b)
+	return result
+
+func get_buildings_awaiting_worker(player: int) -> Array[Building]:
+	"""İnşaatı tamamlanmamış ve şu an worker'ı olmayan binalar."""
+	var result: Array[Building] = []
+	for b in buildings:
+		if b.owner_player != player: continue
+		if b.is_constructed: continue
+		if b.construction_started: continue  # zaten bir worker orada çalışıyor
+		result.append(b)
 	return result
 
 func get_nearest_with_output(pos: Vector2, player: int) -> Dictionary:

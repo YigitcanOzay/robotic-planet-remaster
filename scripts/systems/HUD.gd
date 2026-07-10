@@ -309,7 +309,7 @@ func _format_building_info(b: Building) -> String:
 	var lines: Array = []
 	lines.append("🏭 %s" % b.building_data.get("name", b.building_key))
 	lines.append("HP: %.0f / %.0f" % [b.hp, b.max_hp])
-	lines.append("Durum: %s" % ("İnşa ediliyor (%d%%)" % int(b.build_progress * 100) if not b.is_constructed else "Aktif"))
+	lines.append("Durum: %s" % _building_status_text(b))
 	if b.produces != "":
 		lines.append("Üretim: %s" % b.produces)
 		lines.append("Verimlilik: %d%%" % int(b.efficiency * 100))
@@ -327,11 +327,19 @@ func _format_robot_info(r: Robot) -> String:
 	var type_name = r.robot_data.get("name", r.robot_type)
 	lines.append("🤖 %s" % type_name)
 	lines.append("Durum: %s" % _robot_state_text(r.state))
-	if r.has_cargo():
-		lines.append("Taşıyor: %s" % r.get_cargo_type())
-	else:
-		lines.append("Taşıyor: (boş)")
+	if r.robot_type != "worker":
+		if r.has_cargo():
+			lines.append("Taşıyor: %s" % r.get_cargo_type())
+		else:
+			lines.append("Taşıyor: (boş)")
 	return "\n".join(lines)
+
+func _building_status_text(b: Building) -> String:
+	if b.is_constructed:
+		return "Aktif"
+	if b.construction_started:
+		return "İnşa ediliyor (%d%%)" % int(b.build_progress * 100)
+	return "⏳ İşçi bekleniyor"
 
 func _robot_state_text(state: int) -> String:
 	match state:
@@ -340,6 +348,8 @@ func _robot_state_text(state: int) -> String:
 		Robot.State.PICKING_UP: return "Kaynak alıyor"
 		Robot.State.MOVING_TO_DROPOFF: return "Teslimata gidiyor"
 		Robot.State.DROPPING_OFF: return "Teslim ediyor"
+		Robot.State.MOVING_TO_CONSTRUCT: return "İnşaat alanına gidiyor"
+		Robot.State.CONSTRUCTING: return "İnşa ediyor"
 		_: return "?"
 
 # =============================================================================
