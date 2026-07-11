@@ -63,6 +63,12 @@ func _init_map() -> void:
 	_place_starter("stone_mine", Vector2i(8, 8))
 	_place_starter("storage",    Vector2i(11, 6))
 
+	# Yol ağı: HQ ve başlangıç binalarını birbirine bağla (yol şartı aktif)
+	_lay_road_line(Vector2i(5, 5),  Vector2i(8, 5))   # HQ → iron_mine
+	_lay_road_line(Vector2i(8, 5),  Vector2i(8, 8))   # iron_mine → stone_mine
+	_lay_road_line(Vector2i(8, 6),  Vector2i(11, 6))  # ara yol → storage
+	_lay_road_line(Vector2i(8, 5),  Vector2i(8, 6))   # dikey bağlantı parçası
+
 	# Kamera sinirlarini harita boyutuna gore ayarla
 	var cam = get_node_or_null("Camera2D")
 	if cam and cam.has_method("set_map_bounds"):
@@ -79,6 +85,28 @@ func _place_starter(key: String, pos: Vector2i) -> void:
 	var b = building_manager.place_building(key, pos, 0)
 	if b != null:
 		b.complete_construction()
+
+func _lay_road_line(from: Vector2i, to: Vector2i) -> void:
+	"""İki nokta arasına düz (yatay ya da dikey) yol döşer. Bina tile'larının
+	üzerine yazmaz — bina varsa o kare atlanır, robot binaya zaten pathfinding
+	istisnasıyla ulaşabiliyor."""
+	if from.x == to.x:
+		var y0 = min(from.y, to.y)
+		var y1 = max(from.y, to.y)
+		for y in range(y0, y1 + 1):
+			_set_road_tile(Vector2i(from.x, y))
+	elif from.y == to.y:
+		var x0 = min(from.x, to.x)
+		var x1 = max(from.x, to.x)
+		for x in range(x0, x1 + 1):
+			_set_road_tile(Vector2i(x, from.y))
+	else:
+		push_warning("_lay_road_line: sadece düz çizgi destekler (from=%s to=%s)" % [from, to])
+
+func _set_road_tile(pos: Vector2i) -> void:
+	if map_system.get_tile(pos) == MapSystem.TileType.BUILDING:
+		return  # bina tile'ının üzerine yol yazma
+	map_system.set_tile(pos, MapSystem.TileType.ROAD)
 
 func _spawn_starters() -> void:
 	if unit_manager == null or map_system == null: return

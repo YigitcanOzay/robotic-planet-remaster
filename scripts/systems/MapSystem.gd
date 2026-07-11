@@ -9,7 +9,7 @@ const TILE_SIZE: int = 32
 
 enum TileType { GRASS, FOREST, WATER, HILL, ROCK, ROAD, BUILDING, HQ }
 
-const WALKABLE: Array = [TileType.GRASS, TileType.ROAD, TileType.HILL]
+const WALKABLE: Array = [TileType.ROAD]  # yol şartı: sadece Asphalt üzerinde yürünebilir
 
 var map_width:  int = 56
 var map_height: int = 56
@@ -81,6 +81,13 @@ func get_tile(pos: Vector2i) -> TileType:
 func is_walkable(pos: Vector2i) -> bool:
 	return get_tile(pos) in WALKABLE
 
+func get_speed_multiplier(pos: Vector2i) -> float:
+	"""Tile üzerindeki hareket hız çarpanı. Şu an sadece ROAD yürünebilir
+	olduğu için pratikte hep 1.0 döner; kural ileride gevşetilirse kullanılır."""
+	match get_tile(pos):
+		TileType.ROAD: return 1.0
+		_: return 0.5
+
 func is_buildable(pos: Vector2i) -> bool:
 	if not _in_bounds(pos): return false
 	return get_tile(pos) in [TileType.GRASS, TileType.HILL]
@@ -123,7 +130,9 @@ func find_path(start: Vector2i, goal: Vector2i) -> PackedVector2Array:
 			return _reconstruct(came_from, cur)
 		open_set.erase(cur)
 		for nb in _neighbors(cur):
-			if not is_walkable(nb): continue
+			# Hedefin kendisi yürünemez olsa bile (örn. bina tile'ı) oraya varmaya izin ver.
+			# Sadece ARA duraklar yürünebilir olmak zorunda.
+			if nb != goal and not is_walkable(nb): continue
 			var tg: int = g.get(cur, 9999) + 1
 			if tg < g.get(nb, 9999):
 				came_from[nb] = cur

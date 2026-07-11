@@ -35,6 +35,7 @@ func spawn_robot(robot_type: String, world_pos: Vector2, player: int) -> Robot:
 	r.robot_type      = robot_type
 	r.owner_player    = player
 	r.global_position = world_pos
+	r.map_system      = map_system
 	get_parent().add_child(r)
 	robots.append(r)
 	emit_signal("robot_spawned", r)

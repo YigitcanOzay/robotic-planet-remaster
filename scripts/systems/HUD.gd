@@ -326,7 +326,10 @@ func _format_robot_info(r: Robot) -> String:
 	var lines: Array = []
 	var type_name = r.robot_data.get("name", r.robot_type)
 	lines.append("🤖 %s" % type_name)
-	lines.append("Durum: %s" % _robot_state_text(r.state))
+	if r.is_blocked:
+		lines.append("Durum: 🚧 Yol yok, bekliyor")
+	else:
+		lines.append("Durum: %s" % _robot_state_text(r.state))
 	if r.robot_type != "worker":
 		if r.has_cargo():
 			lines.append("Taşıyor: %s" % r.get_cargo_type())

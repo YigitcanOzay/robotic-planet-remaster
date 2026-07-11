@@ -29,6 +29,13 @@ var target_bin_index: int     = -1
 var path: PackedVector2Array  = []
 var path_index: int           = 0
 
+# --- Yol bulunamadı durumu (yol şartı: robot yolsuz gidemez) ---
+var is_blocked: bool           = false
+var _blocked_retry_timer: float = 0.0
+const BLOCKED_RETRY_INTERVAL: float = 2.0  # yol yeniden döşenmiş olabilir, periyodik dene
+
+var map_system: MapSystem = null  # move_to() içinde pathfinding için gerekli
+
 # --- İnşaat (sadece Worker kullanır) ---
 var construct_elapsed: float  = 0.0
 
@@ -74,7 +81,10 @@ func _draw() -> void:
 func _physics_process(delta: float) -> void:
 	match state:
 		State.MOVING_TO_PICKUP, State.MOVING_TO_DROPOFF, State.MOVING_TO_CONSTRUCT:
-			_move_along_path(delta)
+			if is_blocked:
+				_retry_blocked_path(delta)
+			else:
+				_move_along_path(delta)
 		State.PICKING_UP:
 			_do_pickup()
 		State.DROPPING_OFF:
@@ -82,18 +92,31 @@ func _physics_process(delta: float) -> void:
 		State.CONSTRUCTING:
 			_do_construct(delta)
 
+func _retry_blocked_path(delta: float) -> void:
+	"""Yol bulunamadığında robot burada bekler, periyodik olarak tekrar dener
+	(yol sonradan döşenmiş olabilir)."""
+	velocity = Vector2.ZERO
+	_blocked_retry_timer += delta
+	if _blocked_retry_timer >= BLOCKED_RETRY_INTERVAL:
+		_blocked_retry_timer = 0.0
+		if target_building != null and is_instance_valid(target_building):
+			move_to(target_building.global_position)  # is_blocked'ı günceller
+
 func _move_along_path(delta: float) -> void:
 	if path.is_empty() or path_index >= path.size():
 		_on_arrived()
 		return
 	var target    = path[path_index]
 	var direction = (target - global_position).normalized()
+	var speed_mult = 1.0
+	if map_system != null:
+		speed_mult = map_system.get_speed_multiplier(map_system.world_to_grid(global_position))
 	if global_position.distance_to(target) < 4.0:
 		global_position = target
 		path_index += 1
 		if path_index >= path.size(): _on_arrived()
 	else:
-		velocity = direction * speed
+		velocity = direction * speed * speed_mult
 		move_and_slide()
 
 func _on_arrived() -> void:
@@ -103,7 +126,26 @@ func _on_arrived() -> void:
 	elif state == State.MOVING_TO_CONSTRUCT: state = State.CONSTRUCTING
 
 func move_to(world_pos: Vector2) -> void:
-	path       = PackedVector2Array([global_position, world_pos])
+	if map_system == null:
+		# Pathfinding mümkün değilse eski davranışa düş (güvenlik ağı)
+		path       = PackedVector2Array([global_position, world_pos])
+		path_index = 0
+		is_blocked = false
+		return
+
+	var start_grid = map_system.world_to_grid(global_position)
+	var goal_grid  = map_system.world_to_grid(world_pos)
+	var found_path = map_system.find_path(start_grid, goal_grid)
+
+	if found_path.is_empty():
+		# Yol yok — robot bekler, periyodik olarak tekrar dener
+		is_blocked = true
+		path       = PackedVector2Array()
+		path_index = 0
+		return
+
+	is_blocked = false
+	path       = found_path
 	path_index = 0
 
 # =============================================================================
@@ -161,7 +203,12 @@ func _do_dropoff() -> void:
 	emit_signal("task_completed", self)
 
 func _do_construct(delta: float) -> void:
-	if target_building == null or not is_instance_valid(target_building):
+	if target_building == null:
+		state = State.IDLE
+		return
+	if not is_instance_valid(target_building):
+		# Bina bir şekilde geçersiz hale geldi (örn. yıkıldı) — kilitlenmeyi önle
+		target_building = null
 		state = State.IDLE
 		return
 	if target_building.is_constructed:
