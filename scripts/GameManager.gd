@@ -115,7 +115,7 @@ func _spawn_starters() -> void:
 	unit_manager.spawn_robot("transporter", p + Vector2(0,  0), 0)
 	unit_manager.spawn_robot("transporter", p + Vector2(32, 0), 0)
 	unit_manager.spawn_robot("transporter", p + Vector2(0, 32), 0)
-	unit_manager.spawn_robot("worker",      p + Vector2(32, 32), 0)
+	unit_manager.spawn_robot("build",      p + Vector2(32, 32), 0)
 
 # =============================================================================
 func _process(delta: float) -> void:

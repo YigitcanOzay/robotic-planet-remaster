@@ -26,29 +26,68 @@ const RESOURCES: Dictionary = {
 # --- ROBOTLAR (4 TÜR) ---
 
 const ROBOTS: Dictionary = {
-	"worker": {
-		"code":"G", "name":"Worker Robot",
+	"build": {
+		"code":"G", "name":"Build Robot",
 		"speed":1.0, "capacity":0, "cycle_ticks":0,
 		"build_time":25, "unlock_level":1,
-		"sprite":"res://assets/sprites/units/worker.png"
+		"role":"construct",
+		"sprite":"res://assets/sprites/units/build.png"
 	},
 	"transporter": {
 		"code":"B", "name":"Transporter",
 		"speed":1.0, "capacity":1, "cycle_ticks":30,
 		"build_time":30, "unlock_level":1,
+		"role":"transport",
 		"sprite":"res://assets/sprites/units/transporter.png"
 	},
 	"heavy_transporter": {
 		"code":"H", "name":"Heavy Transporter",
 		"speed":2.0, "capacity":1, "cycle_ticks":10,
 		"build_time":40, "unlock_level":3,
+		"role":"transport",
 		"sprite":"res://assets/sprites/units/heavy_transporter.png"
 	},
 	"scout": {
 		"code":"M", "name":"Scout",
 		"speed":3.0, "capacity":0, "cycle_ticks":5,
 		"build_time":20, "unlock_level":2,
+		"role":"scout",
 		"sprite":"res://assets/sprites/units/scout.png"
+	},
+	"saw": {
+		"code":"S", "name":"Saw Robot",
+		"speed":1.0, "capacity":0, "cycle_ticks":0,
+		"build_time":25, "unlock_level":1,      # TODO: verify
+		"role":"clear",                          # ağaç/engel temizleme (tahmin)
+		"sprite":"res://assets/sprites/units/saw.png"
+	},
+	"road": {
+		"code":"R", "name":"Road Robot",
+		"speed":1.0, "capacity":0, "cycle_ticks":0,
+		"build_time":25, "unlock_level":1,      # TODO: verify
+		"role":"pave",                           # yol (asphalt) döşeme (tahmin)
+		"sprite":"res://assets/sprites/units/road.png"
+	},
+	"farm": {
+		"code":"F", "name":"Farm Robot",
+		"speed":1.0, "capacity":1, "cycle_ticks":30,
+		"build_time":25, "unlock_level":1,      # TODO: verify
+		"role":"harvest",                        # kaynak toplama/tarım (tahmin)
+		"sprite":"res://assets/sprites/units/farm.png"
+	},
+	"battle": {
+		"code":"X", "name":"Battle Robot",
+		"speed":1.5, "capacity":0, "cycle_ticks":0,
+		"build_time":35, "unlock_level":1,      # TODO: verify
+		"role":"combat",                         # savaş birimi (tahmin)
+		"sprite":"res://assets/sprites/units/battle.png"
+	},
+	"drill": {
+		"code":"D", "name":"Drill Robot",
+		"speed":1.0, "capacity":0, "cycle_ticks":0,
+		"build_time":30, "unlock_level":1,      # TODO: verify
+		"role":"mine",                           # madencilik/maden çıkarma (tahmin)
+		"sprite":"res://assets/sprites/units/drill.png"
 	},
 }
 
@@ -244,7 +283,7 @@ const MECHANICS: Dictionary = {
 # --- KİLİT AÇMA ---
 
 const UNLOCKS: Dictionary = {
-	1: ["stone_mine","iron_mine","water_mine","power_mine","storage","worker","transporter"],
+	1: ["stone_mine","iron_mine","water_mine","power_mine","storage","build","transporter"],
 	2: ["yellow_crystal_mine","energy_station","fuel_station","crystal_station","scout"],
 	3: ["titanium_station","heavy_transporter"],
 	5: ["metal_factory","uranium_station"],

@@ -56,7 +56,7 @@ func _draw() -> void:
 	# Robot türüne göre renk
 	var body_col := Color(0.85, 0.85, 0.90)  # transporter varsayılan
 	match robot_type:
-		"worker":            body_col = Color(0.95, 0.75, 0.20)
+		"build":             body_col = Color(0.95, 0.75, 0.20)
 		"heavy_transporter": body_col = Color(0.60, 0.65, 0.95)
 		"scout":             body_col = Color(0.40, 0.90, 0.50)
 

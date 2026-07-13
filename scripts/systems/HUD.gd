@@ -330,7 +330,7 @@ func _format_robot_info(r: Robot) -> String:
 		lines.append("Durum: 🚧 Yol yok, bekliyor")
 	else:
 		lines.append("Durum: %s" % _robot_state_text(r.state))
-	if r.robot_type != "worker":
+	if r.robot_type != "build":
 		if r.has_cargo():
 			lines.append("Taşıyor: %s" % r.get_cargo_type())
 		else:

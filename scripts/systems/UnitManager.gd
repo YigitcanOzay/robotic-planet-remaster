@@ -14,7 +14,7 @@ var robots: Array[Robot] = []
 var _task_timer: float   = 0.0
 const TASK_INTERVAL: float = 0.5
 
-const WORKER_TYPES: Array[String] = ["worker"]  # bu tipler inşaat yapar, kaynak taşımaz
+const WORKER_TYPES: Array[String] = ["build"]  # inşaat yapan robot tipleri (kaynak taşımaz)
 
 func connect_building_signals() -> void:
 	"""GameManager tarafından, building_manager referansı atandıktan SONRA çağrılır.
