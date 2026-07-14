@@ -30,6 +30,10 @@ var _input_event_seen: bool = false
 # Yerleştirme durumu
 var placing_key: String = ""   # "" ise yerleştirme kapalı
 
+# Yol döşeme modu
+var road_mode: bool = false
+var road_first_point: Vector2i = Vector2i(-1, -1)  # -1,-1 = henüz ilk nokta seçilmedi
+
 # Alt menüde gösterilecek binalar (test için 4 tane)
 const PLACEABLE := ["stone_mine", "iron_mine", "fuel_station", "metal_factory"]
 
@@ -138,6 +142,14 @@ func _build_ui() -> void:
 		var label_text = data.get("code", "?")
 		_add_build_button(build_row, label_text, key)
 
+	# Yol döşeme butonu
+	var road_btn = Button.new()
+	road_btn.text = "🛣️"
+	road_btn.custom_minimum_size = Vector2(70, 70)
+	road_btn.add_theme_font_size_override("font_size", 26)
+	road_btn.pressed.connect(_toggle_road_mode)
+	build_row.add_child(road_btn)
+
 	# --- Bilgi paneli (sağda, seçim yokken gizli) ---
 	info_panel = PanelContainer.new()
 	info_panel.position = Vector2(680, 10)
@@ -191,8 +203,58 @@ func _add_build_button(parent: Node, text: String, key: String) -> void:
 
 func _start_placing(key: String) -> void:
 	placing_key = key
+	road_mode = false  # yol modundaysak kapat
 	var data = GameData.get_building(key)
 	status_label.text = "Yerleştir: %s — haritaya dokun (iptal: tekrar bas)" % data.get("name", key)
+
+# =============================================================================
+# YOL DÖŞEME
+# =============================================================================
+
+func _toggle_road_mode() -> void:
+	road_mode = not road_mode
+	placing_key = ""  # yerleştirme modunu kapat
+	road_first_point = Vector2i(-1, -1)
+	if road_mode:
+		status_label.text = "🛣️ Yol modu: 1. noktaya dokun (kapat: tekrar 🛣️)"
+	else:
+		status_label.text = "Yol modu kapalı"
+
+func _handle_road_tap(screen_pos: Vector2) -> void:
+	if camera == null or map_system == null:
+		return
+	var world = camera.position + (screen_pos - get_viewport().get_visible_rect().size * 0.5) / camera.zoom
+	var grid = map_system.world_to_grid(world)
+
+	if not map_system._in_bounds(grid):
+		status_label.text = "🛣️ Harita dışı, tekrar dokun"
+		return
+
+	if road_first_point == Vector2i(-1, -1):
+		# İlk nokta seçildi
+		road_first_point = grid
+		status_label.text = "🛣️ 1. nokta seçildi %s — 2. noktaya dokun" % str(grid)
+	else:
+		# İkinci nokta → aradaki yolu döşe
+		var road_tiles = map_system.find_road_path(road_first_point, grid)
+		if road_tiles.is_empty():
+			status_label.text = "🛣️ Yol bulunamadı (engellerle çevrili), tekrar dene"
+			road_first_point = Vector2i(-1, -1)
+			return
+		var laid = 0
+		for tile in road_tiles:
+			if _lay_road_tile(tile):
+				laid += 1
+		status_label.text = "🛣️ %d tile yol döşendi — yeni 1. noktaya dokun" % laid
+		road_first_point = Vector2i(-1, -1)
+
+func _lay_road_tile(grid: Vector2i) -> bool:
+	"""Tek bir tile'ı ROAD yapar. Bina/HQ üzerine yazmaz. Döşendiyse true."""
+	var t = map_system.get_tile(grid)
+	if t == MapSystem.TileType.BUILDING or t == MapSystem.TileType.HQ:
+		return false
+	map_system.set_tile(grid, MapSystem.TileType.ROAD)
+	return true
 
 func _input(event: InputEvent) -> void:
 	# GEÇİCİ: hangi event tiplerinin geldiğini teşhis et
@@ -208,6 +270,16 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion:
 		_input_event_seen = true
 		debug_label.text = "input: MOUSE_MOTION pos=%s" % [event.position]
+
+	# Yol döşeme modu (yerleştirme ve seçimden ÖNCE ele alınır)
+	if road_mode:
+		if event is InputEventScreenTouch and event.pressed:
+			_handle_road_tap(event.position)
+			get_viewport().set_input_as_handled()
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_handle_road_tap(event.position)
+			get_viewport().set_input_as_handled()
+		return
 
 	if placing_key == "":
 		# Yerleştirme modu kapalı → tıklama SEÇİM için kullanılır

@@ -107,7 +107,7 @@ jobs:
           keystore/release_password=""
           one_click_deploy/clear_previous_install=false
           version/code=1
-          version/name="0.6.1"
+          version/name="0.6.2"
           package/unique_name="com.roboticplanet.remaster"
           package/name="Robotic Planet Remaster"
           package/signed=true

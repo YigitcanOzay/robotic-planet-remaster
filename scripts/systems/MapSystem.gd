@@ -163,3 +163,49 @@ func _reconstruct(came_from: Dictionary, cur: Vector2i) -> PackedVector2Array:
 	var result := PackedVector2Array()
 	for p in path: result.append(grid_to_world(p))
 	return result
+
+# =============================================================================
+# YOL DÖŞEME PATHFINDING (robot hareketinden AYRI)
+# Doğal engelleri (orman/su/kaya) atlar, düz zemin üzerinden geçer.
+# Grid koordinat listesi döner (hangi tile'lar yol yapılacak).
+# =============================================================================
+
+const ROAD_BLOCKERS: Array = [TileType.FOREST, TileType.WATER, TileType.ROCK]
+
+func find_road_path(start: Vector2i, goal: Vector2i) -> Array:
+	"""İki nokta arası, engelleri atlayan tile listesi döndürür (grid koordinatı).
+	Boş dönerse yol bulunamadı (engellerle tamamen çevrili)."""
+	if start == goal:
+		return [start]
+	if not _in_bounds(start) or not _in_bounds(goal):
+		return []
+
+	var open_set := [start]
+	var came_from := {}
+	var g := {start: 0}
+	var f := {start: _h(start, goal)}
+
+	while not open_set.is_empty():
+		var cur: Vector2i = _lowest_f(open_set, f)
+		if cur == goal:
+			return _reconstruct_grid(came_from, cur)
+		open_set.erase(cur)
+		for nb in _neighbors(cur):
+			if not _in_bounds(nb): continue
+			# Hedef hariç, engel tile'larından geçme
+			if nb != goal and get_tile(nb) in ROAD_BLOCKERS: continue
+			var tg: int = g.get(cur, 9999) + 1
+			if tg < g.get(nb, 9999):
+				came_from[nb] = cur
+				g[nb] = tg
+				f[nb] = tg + _h(nb, goal)
+				if nb not in open_set: open_set.append(nb)
+
+	return []
+
+func _reconstruct_grid(came_from: Dictionary, cur: Vector2i) -> Array:
+	var path: Array[Vector2i] = [cur]
+	while cur in came_from:
+		cur = came_from[cur]
+		path.push_front(cur)
+	return path
