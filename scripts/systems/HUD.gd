@@ -144,9 +144,9 @@ func _build_ui() -> void:
 
 	# Yol döşeme butonu
 	var road_btn = Button.new()
-	road_btn.text = "🛣️"
-	road_btn.custom_minimum_size = Vector2(70, 70)
-	road_btn.add_theme_font_size_override("font_size", 26)
+	road_btn.text = "YOL"
+	road_btn.custom_minimum_size = Vector2(90, 70)
+	road_btn.add_theme_font_size_override("font_size", 24)
 	road_btn.pressed.connect(_toggle_road_mode)
 	build_row.add_child(road_btn)
 
@@ -216,7 +216,7 @@ func _toggle_road_mode() -> void:
 	placing_key = ""  # yerleştirme modunu kapat
 	road_first_point = Vector2i(-1, -1)
 	if road_mode:
-		status_label.text = "🛣️ Yol modu: 1. noktaya dokun (kapat: tekrar 🛣️)"
+		status_label.text = "[YOL] Yol modu: 1. noktaya dokun (kapat: tekrar YOL)"
 	else:
 		status_label.text = "Yol modu kapalı"
 
@@ -227,25 +227,25 @@ func _handle_road_tap(screen_pos: Vector2) -> void:
 	var grid = map_system.world_to_grid(world)
 
 	if not map_system._in_bounds(grid):
-		status_label.text = "🛣️ Harita dışı, tekrar dokun"
+		status_label.text = "[YOL] Harita dışı, tekrar dokun"
 		return
 
 	if road_first_point == Vector2i(-1, -1):
 		# İlk nokta seçildi
 		road_first_point = grid
-		status_label.text = "🛣️ 1. nokta seçildi %s — 2. noktaya dokun" % str(grid)
+		status_label.text = "[YOL] 1. nokta seçildi %s — 2. noktaya dokun" % str(grid)
 	else:
 		# İkinci nokta → aradaki yolu döşe
 		var road_tiles = map_system.find_road_path(road_first_point, grid)
 		if road_tiles.is_empty():
-			status_label.text = "🛣️ Yol bulunamadı (engellerle çevrili), tekrar dene"
+			status_label.text = "[YOL] Yol bulunamadı (engellerle çevrili), tekrar dene"
 			road_first_point = Vector2i(-1, -1)
 			return
 		var laid = 0
 		for tile in road_tiles:
 			if _lay_road_tile(tile):
 				laid += 1
-		status_label.text = "🛣️ %d tile yol döşendi — yeni 1. noktaya dokun" % laid
+		status_label.text = "[YOL] %d tile yol döşendi — yeni 1. noktaya dokun" % laid
 		road_first_point = Vector2i(-1, -1)
 
 func _lay_road_tile(grid: Vector2i) -> bool:
