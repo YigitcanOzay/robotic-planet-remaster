@@ -245,8 +245,10 @@ func _handle_road_tap(screen_pos: Vector2) -> void:
 		for tile in road_tiles:
 			if _lay_road_tile(tile):
 				laid += 1
-		status_label.text = "[YOL] %d tile yol döşendi — yeni 1. noktaya dokun" % laid
+		# Yol tamamlandı → modu otomatik kapat (yeni yol için tekrar YOL'a basılır)
+		road_mode = false
 		road_first_point = Vector2i(-1, -1)
+		status_label.text = "[YOL] %d tile döşendi, yol modu kapandı" % laid
 
 func _lay_road_tile(grid: Vector2i) -> bool:
 	"""Tek bir tile'ı ROAD yapar. Bina/HQ üzerine yazmaz. Döşendiyse true."""
@@ -273,12 +275,18 @@ func _input(event: InputEvent) -> void:
 
 	# Yol döşeme modu (yerleştirme ve seçimden ÖNCE ele alınır)
 	if road_mode:
+		var touch_pos = Vector2.ZERO
+		var is_tap = false
 		if event is InputEventScreenTouch and event.pressed:
-			_handle_road_tap(event.position)
-			get_viewport().set_input_as_handled()
+			touch_pos = event.position; is_tap = true
 		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			_handle_road_tap(event.position)
-			get_viewport().set_input_as_handled()
+			touch_pos = event.position; is_tap = true
+		if is_tap:
+			# Alt buton bölgesine (hız/bina/yol butonları) denk geliyorsa yol işleme,
+			# butonların çalışmasına izin ver (yol modundan çıkabilmek için şart)
+			if touch_pos.y < 1740:
+				_handle_road_tap(touch_pos)
+				get_viewport().set_input_as_handled()
 		return
 
 	if placing_key == "":
