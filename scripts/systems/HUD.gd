@@ -150,6 +150,14 @@ func _build_ui() -> void:
 	road_btn.pressed.connect(_toggle_road_mode)
 	build_row.add_child(road_btn)
 
+	# Seçim/gezinme modu butonu (yol ve yerleştirmeden vazgeçmek için)
+	var select_btn = Button.new()
+	select_btn.text = "SEÇ"
+	select_btn.custom_minimum_size = Vector2(90, 70)
+	select_btn.add_theme_font_size_override("font_size", 24)
+	select_btn.pressed.connect(_enter_select_mode)
+	build_row.add_child(select_btn)
+
 	# --- Bilgi paneli (sağda, seçim yokken gizli) ---
 	info_panel = PanelContainer.new()
 	info_panel.position = Vector2(680, 10)
@@ -201,11 +209,20 @@ func _add_build_button(parent: Node, text: String, key: String) -> void:
 # YERLEŞTİRME
 # =============================================================================
 
+func _enter_select_mode() -> void:
+	"""Nötr mod: yol ve yerleştirmeyi kapat, sadece harita gezinme + seçim aktif."""
+	placing_key = ""
+	road_mode = false
+	road_first_point = Vector2i(-1, -1)
+	status_label.text = "Seçim modu: binaya/robota dokun, haritada gez"
+	get_viewport().gui_release_focus()
+
 func _start_placing(key: String) -> void:
 	placing_key = key
 	road_mode = false  # yol modundaysak kapat
 	var data = GameData.get_building(key)
-	status_label.text = "Yerleştir: %s — haritaya dokun (iptal: tekrar bas)" % data.get("name", key)
+	status_label.text = "Yerleştir: %s — haritaya dokun (iptal: SEÇ)" % data.get("name", key)
+	get_viewport().gui_release_focus()
 
 # =============================================================================
 # YOL DÖŞEME
@@ -215,6 +232,7 @@ func _toggle_road_mode() -> void:
 	road_mode = not road_mode
 	placing_key = ""  # yerleştirme modunu kapat
 	road_first_point = Vector2i(-1, -1)
+	get_viewport().gui_release_focus()
 	if road_mode:
 		status_label.text = "[YOL] Yol modu: 1. noktaya dokun (kapat: tekrar YOL)"
 	else:
@@ -249,6 +267,7 @@ func _handle_road_tap(screen_pos: Vector2) -> void:
 		road_mode = false
 		road_first_point = Vector2i(-1, -1)
 		status_label.text = "[YOL] %d tile döşendi, yol modu kapandı" % laid
+		get_viewport().gui_release_focus()
 
 func _lay_road_tile(grid: Vector2i) -> bool:
 	"""Tek bir tile'ı ROAD yapar. Bina/HQ üzerine yazmaz. Döşendiyse true."""
